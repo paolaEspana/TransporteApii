@@ -7,6 +7,6 @@ import retrofit2.http.GET;
 
 public interface TransporteApiService
 {
-        @GET("4p32-twbt.json")
+        @GET("f6bk-epfq.json")
         Call<ArrayList<EmpresaTransporte>> obtenerLista();
 }

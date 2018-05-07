@@ -2,9 +2,12 @@ package com.example.paola.transporteapi;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 
 import com.example.paola.transporteapi.api.EmpresaTransporte;
+import com.example.paola.transporteapi.api.ListTransporteAdapter;
 import com.example.paola.transporteapi.api.TransporteApiService;
 
 import java.util.ArrayList;
@@ -18,6 +21,10 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
     private Retrofit retrofit;
+    private RecyclerView recyclerView;
+    private ListTransporteAdapter listaTransporte;
+    private boolean aptoParaCargar;
+    final String TAG = "TRANSPORTE";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,11 +35,42 @@ public class MainActivity extends AppCompatActivity {
 
         retrofit = new Retrofit.Builder().baseUrl("https://www.datos.gov.co/resource/").addConverterFactory(GsonConverterFactory.create()).build();
 
+        recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
+        listaTransporte = new ListTransporteAdapter(this);
+        recyclerView.setAdapter(listaTransporte);
+        recyclerView.setHasFixedSize(true);
 
+        final GridLayoutManager layoutManager = new GridLayoutManager(this, 1);
+        recyclerView.setLayoutManager(layoutManager);
+
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (dy >0){
+                    int visibleItemCount = layoutManager.getChildCount();
+                    int totalItemCount = layoutManager.getItemCount();
+                    int pastVisibleItems = layoutManager.findFirstVisibleItemPosition();
+
+                    if(aptoParaCargar) {
+                        if ((visibleItemCount +pastVisibleItems ) >= totalItemCount) {
+                            Log.i(TAG, " Llegamos al final");
+                            aptoParaCargar = false;
+
+                            procesarDatos();
+                        }
+                    }
+                }
+            }
+        });
+
+
+        aptoParaCargar = true;
         procesarDatos();
     }
 
     private void procesarDatos() {
+
 
         TransporteApiService service = retrofit.create(TransporteApiService.class);
 
@@ -44,21 +82,19 @@ public class MainActivity extends AppCompatActivity {
             {
                 if (response.isSuccessful())
                 {
+                    aptoParaCargar = true;
                     ArrayList<EmpresaTransporte>  empresas = response.body();
 
-                    for(int i=0; i<empresas.size(); i++)
-                    {
-                        EmpresaTransporte empresa = empresas.get(i);
 
-                        Log.i("Transporte", "nombre: " + empresa.getNombre_de_la_empresa()+ ", direccion: "+empresa.getDireccion());
-                    }
+                        listaTransporte.adicionarEmpresa(empresas);
                 }
             }
 
             @Override
             public void onFailure(Call<ArrayList<EmpresaTransporte>> call, Throwable t) {
                 //falla
-                Log.e("mi", " OnFailure: " + t.getMessage());
+                aptoParaCargar = true;
+                Log.e(TAG," on Failure "+ t.getMessage());
             }
         });
 
